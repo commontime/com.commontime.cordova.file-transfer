@@ -390,8 +390,20 @@ namespace WPCordovaClassLib.Cordova.Commands
                     DispatchCommandResult(new PluginResult(PluginResult.Status.ERROR, new FileTransferError(InvalidUrlError, uploadOptions.Server, null, 0)));
                     return;
                 }
+
+                bool isMultipart = string.IsNullOrEmpty(uploadOptions.MimeType);
+
                 webRequest = (HttpWebRequest)WebRequest.Create(serverUri);
-                webRequest.ContentType = "multipart/form-data; boundary=" + Boundary;
+
+                if (isMultipart)
+                {
+                  webRequest.ContentType = "multipart/form-data; boundary=" + Boundary;
+                }
+                else
+                {
+                  webRequest.ContentType = uploadOptions.MimeType;
+                }
+
                 webRequest.Method = uploadOptions.Method;
 
                 DownloadRequestState reqState = new DownloadRequestState();
@@ -425,7 +437,14 @@ namespace WPCordovaClassLib.Cordova.Commands
                     }
                 }
 
-                webRequest.BeginGetRequestStream(uploadCallback, reqState);
+                if (isMultipart)
+                {
+                  webRequest.BeginGetRequestStream(uploadCallback, reqState);
+                }
+                else
+                {
+                  webRequest.BeginGetRequestStream(uploadRawCallback, reqState);                
+                }
             }
             catch (Exception /*ex*/)
             {
@@ -920,6 +939,70 @@ namespace WPCordovaClassLib.Cordova.Commands
         }
 
         /// <summary>
+        /// Read file from Isolated Storage and sends it to server raw, i.e.,
+        /// not wrapped in a multipart form.
+        /// </summary>
+        /// <param name="asynchronousResult"></param>
+        private void uploadRawCallback(IAsyncResult asynchronousResult)
+        {
+          DownloadRequestState reqState = (DownloadRequestState) asynchronousResult.AsyncState;
+          HttpWebRequest webRequest = reqState.request;
+          string callbackId = reqState.options.CallbackId;
+
+          try
+          {
+            using (Stream requestStream = (webRequest.EndGetRequestStream(asynchronousResult)))
+            {
+              using (IsolatedStorageFile isoFile = IsolatedStorageFile.GetUserStoreForApplication())
+              {
+                if (!isoFile.FileExists(reqState.options.FilePath))
+                {
+                  DispatchCommandResult(new PluginResult(PluginResult.Status.ERROR, new FileTransferError(FileNotFoundError, reqState.options.Server, reqState.options.FilePath, 0)));
+                  return;
+                }
+
+                long totalBytesToSend = 0;
+
+                using (FileStream fileStream = new IsolatedStorageFileStream(reqState.options.FilePath, FileMode.Open, isoFile))
+                {
+                  byte[] buffer = new byte[32 * 1024];
+                  int bytesRead = 0;
+
+                  //sent bytes needs to be reseted before new upload
+                  bytesSent = 0;
+                  totalBytesToSend = fileStream.Length;
+                 
+                  while ((bytesRead = fileStream.Read(buffer, 0, buffer.Length)) != 0)
+                  {
+                    if (!reqState.isCancelled)
+                    {
+                      requestStream.Write(buffer, 0, bytesRead);
+                      bytesSent += bytesRead;
+                      DispatchFileTransferProgress(bytesSent, totalBytesToSend, callbackId);
+                      System.Threading.Thread.Sleep(1);
+                    }
+                    else
+                    {
+                      throw new Exception("UploadCancelledException");
+                    }
+                  }
+                }
+              }
+            }
+            // webRequest
+
+            webRequest.BeginGetResponse(ReadCallback, reqState);
+          }
+          catch (Exception /*ex*/)
+          {
+            if (!reqState.isCancelled)
+            {
+              DispatchCommandResult(new PluginResult(PluginResult.Status.ERROR, new FileTransferError(ConnectionError)), callbackId);
+            }
+          }
+        }
+        
+      /// <summary>
         /// Reads response into FileUploadResult
         /// </summary>
         /// <param name="asynchronousResult"></param>
