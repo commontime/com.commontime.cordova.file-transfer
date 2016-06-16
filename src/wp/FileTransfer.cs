@@ -391,6 +391,27 @@ namespace WPCordovaClassLib.Cordova.Commands
                     return;
                 }
 
+                // We might have the content-type in the headers
+                Dictionary<string, string> headers = null;
+
+                if (!string.IsNullOrEmpty(uploadOptions.Headers))
+                {
+                  headers = parseHeaders(uploadOptions.Headers);
+                  
+                  if (headers != null)
+                  {
+                    foreach (string key in headers.Keys)
+                    {
+                      if (key.Equals("Content-Type", StringComparison.InvariantCultureIgnoreCase))
+                      {
+                        uploadOptions.MimeType = headers[key];
+
+                        break;
+                      }
+                    }
+                  }
+                }
+
                 bool isMultipart = string.IsNullOrEmpty(uploadOptions.MimeType);
 
                 webRequest = (HttpWebRequest)WebRequest.Create(serverUri);
@@ -425,16 +446,22 @@ namespace WPCordovaClassLib.Cordova.Commands
                     return;
                 }
 
-                if (!string.IsNullOrEmpty(uploadOptions.Headers))
+                if (headers != null)
                 {
-                    Dictionary<string, string> headers = parseHeaders(uploadOptions.Headers);
-                    if (headers != null)
+                  foreach (string key in headers.Keys)
+                  {
+                    if (key.Equals("Content-Type", StringComparison.InvariantCultureIgnoreCase) ||
+                        key.Equals("Content-Length", StringComparison.InvariantCultureIgnoreCase) ||
+                        key.Equals("Accept", StringComparison.InvariantCultureIgnoreCase))
                     {
-                        foreach (string key in headers.Keys)
-                        {
-                            webRequest.Headers[key] = headers[key];
-                        }
+                      // You can't set these headers via the headers object; you have to use
+                      // the corresponding property on the request object.
                     }
+                    else
+                    {
+                      webRequest.Headers[key] = headers[key];
+                    }
+                  }
                 }
 
                 if (isMultipart)
