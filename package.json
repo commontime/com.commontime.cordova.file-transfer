@@ -1,5 +1,5 @@
 {
-  "name": "cordova-plugin-file-transfer",
+  "name": "com.commontime.cordova.file-transfer",
   "version": "1.5.3",
   "description": "Cordova File Transfer Plugin",
   "cordova": {
