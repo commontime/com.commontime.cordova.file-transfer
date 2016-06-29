@@ -917,7 +917,7 @@ namespace WPCordovaClassLib.Cordova.Commands
                         byte[] endRequest = System.Text.Encoding.UTF8.GetBytes(lineEnd + lineStart + Boundary + lineStart + lineEnd);
                         long totalBytesToSend = 0;
 
-                        using (FileStream fileStream = new IsolatedStorageFileStream(reqState.options.FilePath, FileMode.Open, isoFile))
+                        using (FileStream fileStream = new IsolatedStorageFileStream(reqState.options.FilePath, FileMode.Open, FileAccess.Read, FileShare.Read, isoFile))
                         {
                             string headerTemplate = "Content-Disposition: form-data; name=\"{0}\"; filename=\"{1}\"" + lineEnd + "Content-Type: {2}" + lineEnd + lineEnd;
                             string header = string.Format(headerTemplate, reqState.options.FileKey, reqState.options.FileName, reqState.options.MimeType);
@@ -990,7 +990,7 @@ namespace WPCordovaClassLib.Cordova.Commands
 
                 long totalBytesToSend = 0;
 
-                using (FileStream fileStream = new IsolatedStorageFileStream(reqState.options.FilePath, FileMode.Open, isoFile))
+                using (FileStream fileStream = new IsolatedStorageFileStream(reqState.options.FilePath, FileMode.Open, FileAccess.Read, FileShare.Read, isoFile))
                 {
                   byte[] buffer = new byte[32 * 1024];
                   int bytesRead = 0;
