@@ -426,7 +426,7 @@ public class FileTransfer extends CordovaPlugin {
                     // setFixedLengthStreamingMode causes and OutOfMemoryException on pre-Froyo devices.
                     // http://code.google.com/p/android/issues/detail?id=3164
                     // It also causes OOM if HTTPS is used, even on newer devices.
-                    boolean useChunkedMode = chunkedMode || (Build.VERSION.SDK_INT < Build.VERSION_CODES.FROYO || useHttps);
+                    boolean useChunkedMode = chunkedMode || (Build.VERSION.SDK_INT < Build.VERSION_CODES.FROYO);
                     useChunkedMode = useChunkedMode || (fixedLength == -1);
 
                     if (useChunkedMode) {
@@ -436,6 +436,9 @@ public class FileTransfer extends CordovaPlugin {
                         conn.setRequestProperty("Transfer-Encoding", "chunked");
                     } else {
                         conn.setFixedLengthStreamingMode(fixedLength);
+                        if (useHttps) {
+                          LOG.w(LOG_TAG, "setFixedLengthStreamingMode could cause OutOfMemoryException - switch to chunkedMode=true to avoid it if this is an issue.");
+                        }
                     }
 
                     conn.connect();
