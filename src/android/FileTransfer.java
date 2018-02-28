@@ -437,7 +437,7 @@ public class FileTransfer extends CordovaPlugin {
                     } else {
                         conn.setFixedLengthStreamingMode(fixedLength);
                         if (useHttps) {
-                          LOG.w(LOG_TAG, "setFixedLengthStreamingMode could cause OutOfMemoryException - switch to chunkedMode=true to avoid it if this is an issue.");
+                          Log.w(LOG_TAG, "setFixedLengthStreamingMode could cause OutOfMemoryException - switch to chunkedMode=true to avoid it if this is an issue.");
                         }
                     }
 
