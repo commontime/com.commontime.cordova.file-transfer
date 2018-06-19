@@ -63,6 +63,7 @@ import org.json.JSONObject;
 
 import android.net.Uri;
 import android.os.Build;
+import android.os.Environment;
 import android.util.Log;
 import android.webkit.CookieManager;
 
@@ -81,6 +82,17 @@ public class FileTransfer extends CordovaPlugin {
 
     private static HashMap<String, RequestContext> activeRequests = new HashMap<String, RequestContext>();
     private static final int MAX_BUFFER_SIZE = 16 * 1024;
+
+    private String savedTarget;
+    private JSONArray savedArgs;
+    private CallbackContext callbackContext;
+    private boolean wasDecrypted;
+    private static final String DECRYPT_FILE_MSG_ID = "DECRYPT_FILE";
+    private static final String DECRYPT_FILE_CALLBACK_MSG_ID = "DECRYPTION_RESPONSE";
+    private static final String DECRYPT_FILE_URI_KEY = "uri";
+    private static final String DECRYPT_FILE_CALLBACK_KEY = "cb";
+    private static final String DECRYPT_TARGET_KEY = "target";
+    private static final String ENCRYPTED_FILE_EXTENSION = ".encrypted";
 
     private static final class RequestContext {
         String source;
@@ -175,6 +187,7 @@ public class FileTransfer extends CordovaPlugin {
 
     @Override
     public boolean execute(String action, JSONArray args, final CallbackContext callbackContext) throws JSONException {
+        this.callbackContext = callbackContext;
         if (action.equals("upload") || action.equals("download")) {
             String source = args.getString(0);
             String target = args.getString(1);
@@ -263,6 +276,24 @@ public class FileTransfer extends CordovaPlugin {
         return cookie;
     }
 
+    @Override
+    public Object onMessage(String id, Object data) {
+        if (id.equals(DECRYPT_FILE_CALLBACK_MSG_ID)) {
+            if (data != null) {
+                try {
+                    JSONObject jsonData = (JSONObject) data;
+                    upload(jsonData.getString(DECRYPT_FILE_URI_KEY), savedTarget, savedArgs, callbackContext);
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                    callbackContext.error("Failed to upload picture");
+                }
+            } else {
+                callbackContext.error("Failed to upload picture");
+            }
+        }
+        return super.onMessage(id, data);
+    }
+
     /**
      * Uploads the specified file to the server URL provided using an HTTP multipart request.
      * @param source        Full path of the file on the file system
@@ -278,6 +309,20 @@ public class FileTransfer extends CordovaPlugin {
      */
     private void upload(final String source, final String target, JSONArray args, CallbackContext callbackContext) throws JSONException {
         Log.d(LOG_TAG, "upload " + source + " to " +  target);
+
+        if (source.contains(ENCRYPTED_FILE_EXTENSION)) {
+            savedTarget = target.replace(ENCRYPTED_FILE_EXTENSION, "");
+            savedArgs = args;
+            savedArgs.put(0, savedArgs.getString(0).replace(ENCRYPTED_FILE_EXTENSION, ""));
+            savedArgs.put(3, savedArgs.getString(3).replace(ENCRYPTED_FILE_EXTENSION, ""));
+            wasDecrypted = true;
+            JSONObject data = new JSONObject();
+            data.put(DECRYPT_FILE_URI_KEY, source);
+            data.put(DECRYPT_TARGET_KEY, cordova.getActivity().getCacheDir().getAbsolutePath());
+            data.put(DECRYPT_FILE_CALLBACK_KEY, DECRYPT_FILE_CALLBACK_MSG_ID);
+            webView.getPluginManager().postMessage(DECRYPT_FILE_MSG_ID, data);
+            return;
+        }
 
         // Setup the options
         final String fileKey = getArgument(args, 2, "file");
@@ -570,6 +615,18 @@ public class FileTransfer extends CordovaPlugin {
                             https.setHostnameVerifier(oldHostnameVerifier);
                             https.setSSLSocketFactory(oldSocketFactory);
                         }
+                    }
+
+                    if (wasDecrypted) {
+                        File fdelete = new File(sourceUri.getPath());
+                        if (fdelete.exists()) {
+                            if (fdelete.delete()) {
+                                Log.d(LOG_TAG, "file Deleted : " + sourceUri.getPath());
+                            } else {
+                                Log.d(LOG_TAG, "file not Deleted : " + sourceUri.getPath());
+                            }
+                        }
+                        wasDecrypted = false;
                     }
                 }
             }
