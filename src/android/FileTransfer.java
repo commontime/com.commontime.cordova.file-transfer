@@ -66,6 +66,7 @@ import android.os.Build;
 import android.os.Environment;
 import android.util.Log;
 import android.webkit.CookieManager;
+import android.util.ArrayMap;
 
 import java.util.Map;
 import java.util.UUID;
