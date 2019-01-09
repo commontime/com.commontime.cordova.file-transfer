@@ -98,6 +98,7 @@ public class FileTransfer extends CordovaPlugin {
     private static final String DECRYPT_FILE_URI_KEY = "uri";
     private static final String DECRYPT_FILE_CALLBACK_KEY = "cb";
     private static final String DECRYPT_TARGET_KEY = "target";
+    private static final String ENCRYPT_DECRYPT_REQUEST_ID_KEY = "encryptDecryptRequestId";
     private static final String ENCRYPTED_FILE_EXTENSION = ".encrypted";
 
     private static final class RequestContext {
