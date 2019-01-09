@@ -88,6 +88,7 @@ public class FileTransfer extends CordovaPlugin {
 
     private String savedTarget;
     private JSONArray savedArgs;
+    private CallbackContext callbackContext;
     private Map<String, CallbackContext> callbackContextList;
     private boolean wasDecrypted;
     private static final String DECRYPT_FILE_ERROR_MSG = "Failed to upload picture due to file decryption";
