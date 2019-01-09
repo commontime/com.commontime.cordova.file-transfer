@@ -326,7 +326,7 @@ public class FileTransfer extends CordovaPlugin {
         {
             if (webView.getPluginManager().getPlugin("FileEncryption") == null)
             {
-                callbackContext.error("Unable to decrypt to make a thumbnail for the file at '" + path + "'. File encryption plugin not present.");
+                callbackContext.error("Unable to decrypt to make a thumbnail for the file at '" + source + "'. File encryption plugin not present.");
             }
 
             String decryptRequestId = UUID.randomUUID().toString();
