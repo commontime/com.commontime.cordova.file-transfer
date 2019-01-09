@@ -67,6 +67,9 @@ import android.os.Environment;
 import android.util.Log;
 import android.webkit.CookieManager;
 
+import java.util.Map;
+import java.util.UUID;
+
 public class FileTransfer extends CordovaPlugin {
 
     private static final String LOG_TAG = "FileTransfer";
