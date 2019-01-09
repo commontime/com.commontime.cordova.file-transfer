@@ -85,8 +85,9 @@ public class FileTransfer extends CordovaPlugin {
 
     private String savedTarget;
     private JSONArray savedArgs;
-    private CallbackContext callbackContext;
+    private Map<String, CallbackContext> callbackContextList;
     private boolean wasDecrypted;
+    private static final String DECRYPT_FILE_ERROR_MSG = "Failed to upload picture due to file decryption";
     private static final String DECRYPT_FILE_MSG_ID = "DECRYPT_FILE";
     private static final String DECRYPT_FILE_CALLBACK_MSG_ID = "DECRYPTION_RESPONSE";
     private static final String DECRYPT_FILE_URI_KEY = "uri";
@@ -186,8 +187,11 @@ public class FileTransfer extends CordovaPlugin {
     }
 
     @Override
-    public boolean execute(String action, JSONArray args, final CallbackContext callbackContext) throws JSONException {
-        this.callbackContext = callbackContext;
+    public boolean execute(String action, JSONArray args, final CallbackContext callbackContext) throws JSONException
+    {
+        if (callbackContextList == null)
+            callbackContextList = new ArrayMap<String, CallbackContext>();
+
         if (action.equals("upload") || action.equals("download")) {
             String source = args.getString(0);
             String target = args.getString(1);
@@ -282,13 +286,15 @@ public class FileTransfer extends CordovaPlugin {
             if (data != null) {
                 try {
                     JSONObject jsonData = (JSONObject) data;
+                    String requestId = ((JSONObject) data).getString(ENCRYPT_DECRYPT_REQUEST_ID_KEY);
+                    CallbackContext callbackContext = callbackContextList.get(requestId);
+                    callbackContextList.remove(requestId);
                     upload(jsonData.getString(DECRYPT_FILE_URI_KEY), savedTarget, savedArgs, callbackContext);
                 } catch (JSONException e) {
-                    e.printStackTrace();
-                    callbackContext.error("Failed to upload picture");
+                    Log.e(LOG_TAG, DECRYPT_FILE_ERROR_MSG);                    
                 }
             } else {
-                callbackContext.error("Failed to upload picture");
+                Log.e(LOG_TAG, DECRYPT_FILE_ERROR_MSG);
             }
         }
         return super.onMessage(id, data);
@@ -310,13 +316,24 @@ public class FileTransfer extends CordovaPlugin {
     private void upload(final String source, final String target, JSONArray args, CallbackContext callbackContext) throws JSONException {
         Log.d(LOG_TAG, "upload " + source + " to " +  target);
 
-        if (source.contains(ENCRYPTED_FILE_EXTENSION)) {
+        if (source.contains(ENCRYPTED_FILE_EXTENSION))
+        {
+            if (webView.getPluginManager().getPlugin("FileEncryption") == null)
+            {
+                callbackContext.error("Unable to decrypt to make a thumbnail for the file at '" + path + "'. File encryption plugin not present.");
+            }
+
+            String decryptRequestId = UUID.randomUUID().toString();
+
+            callbackContextList.put(decryptRequestId, callbackContext);
+
             savedTarget = target.replace(ENCRYPTED_FILE_EXTENSION, "");
             savedArgs = args;
             savedArgs.put(0, savedArgs.getString(0).replace(ENCRYPTED_FILE_EXTENSION, ""));
             savedArgs.put(3, savedArgs.getString(3).replace(ENCRYPTED_FILE_EXTENSION, ""));
             wasDecrypted = true;
             JSONObject data = new JSONObject();
+            data.put(ENCRYPT_DECRYPT_REQUEST_ID_KEY, decryptRequestId);
             data.put(DECRYPT_FILE_URI_KEY, source);
             data.put(DECRYPT_TARGET_KEY, cordova.getActivity().getCacheDir().getAbsolutePath());
             data.put(DECRYPT_FILE_CALLBACK_KEY, DECRYPT_FILE_CALLBACK_MSG_ID);
