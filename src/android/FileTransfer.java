@@ -294,6 +294,7 @@ public class FileTransfer extends CordovaPlugin {
                     JSONObject jsonData = (JSONObject) data;
                     String requestId = ((JSONObject) data).getString(ENCRYPT_DECRYPT_REQUEST_ID_KEY);
                     CallbackContext callbackContext = callbackContextList.get(requestId);
+                    if (callbackContext == null) return super.onMessage(id, data);
                     callbackContextList.remove(requestId);
                     upload(jsonData.getString(DECRYPT_FILE_URI_KEY), savedTarget, savedArgs, callbackContext);
                 } catch (JSONException e) {
